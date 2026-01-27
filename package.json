@@ -4,7 +4,9 @@
   "description": "",
   "main": "client.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "node generate-files.js",
+    "dev": "node generate-files.js && python3 -m http.server 3001"
   },
   "keywords": [],
   "author": "",

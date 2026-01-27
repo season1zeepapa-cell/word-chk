@@ -1,12 +1,9 @@
 // ========================================
 // 📚 전역 변수 선언
 // ========================================
-// profile 폴더에 있는 파일 목록 (실제로는 서버에서 가져와야 하지만, 여기서는 직접 지정)
-const profileFiles = [
-    '자기소개서1.txt',
-    '지원동기.txt',
-    '경력사항.txt'
-];
+// 파일 목록은 files.json에서 동적으로 가져옵니다 (빌드 시 자동 생성)
+// 설명: profile 폴더의 모든 .txt 파일 목록이 files.json에 저장되어 있어요
+let profileFiles = [];
 
 // 각 파일의 내용을 저장할 배열 (나중에 파일을 읽어서 채울 예정)
 let filesData = [];
@@ -23,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // ========================================
 // 📂 파일들을 불러오는 메인 함수
 // ========================================
-// 설명: profile 폴더의 각 파일을 읽어서 화면에 표시합니다
+// 설명: files.json에서 파일 목록을 가져온 후, 각 파일을 읽어서 화면에 표시합니다
 async function loadFiles() {
     // 1단계: 파일 목록을 담을 HTML 영역을 찾습니다
     const fileListElement = document.getElementById('fileList');
@@ -31,11 +28,40 @@ async function loadFiles() {
     // 2단계: 로딩 표시를 제거합니다
     fileListElement.innerHTML = '';
 
-    // 3단계: 각 파일을 순서대로 읽습니다
+    // 🆕 3단계: files.json에서 파일 목록 가져오기
+    // 설명: 빌드 시 자동으로 생성된 files.json 파일을 읽어옵니다
+    try {
+        console.log('📂 files.json 로딩 중...');
+        const filesResponse = await fetch('files.json');
+
+        // JSON 파일의 내용을 JavaScript 배열로 변환
+        profileFiles = await filesResponse.json();
+
+        console.log('✅ 파일 목록 로드 완료:', profileFiles);
+        console.log(`📊 총 ${profileFiles.length}개 파일 발견`);
+
+    } catch (error) {
+        // files.json을 읽지 못하면 오류 메시지 표시
+        console.error('❌ files.json 로드 실패:', error);
+
+        // 화면에 오류 메시지 표시
+        fileListElement.innerHTML = `
+            <div class="text-center py-12 bg-white rounded-xl shadow-md">
+                <p class="text-red-500 text-lg mb-2">파일 목록을 불러올 수 없습니다 😢</p>
+                <p class="text-gray-600 text-sm">files.json 파일이 없거나 읽을 수 없습니다.</p>
+                <p class="text-gray-500 text-xs mt-2">힌트: npm run build를 실행해보세요!</p>
+            </div>
+        `;
+        return; // 더 이상 진행하지 않고 함수 종료
+    }
+
+    // 4단계: 각 파일을 순서대로 읽습니다
     for (const fileName of profileFiles) {
         try {
             // 파일 경로 만들기 (예: profile/자기소개서1.txt)
             const filePath = `profile/${fileName}`;
+
+            console.log(`📄 ${fileName} 로딩 중...`);
 
             // 파일 내용 읽어오기 (서버에서 가져옴)
             const response = await fetch(filePath);
@@ -51,17 +77,19 @@ async function loadFiles() {
                 charCount: charCount
             });
 
-            console.log(`${fileName} 로드 완료: ${charCount}자`);
+            console.log(`✅ ${fileName} 로드 완료: ${charCount}자`);
 
         } catch (error) {
             // 파일을 읽는 중 오류가 발생하면 콘솔에 표시
-            console.error(`${fileName} 로드 실패:`, error);
+            console.error(`❌ ${fileName} 로드 실패:`, error);
         }
     }
 
-    // 4단계: 모든 파일을 읽은 후 화면에 표시
+    // 5단계: 모든 파일을 읽은 후 화면에 표시
+    console.log('🎨 UI 렌더링 시작...');
     renderFileList();
     updateStats();
+    console.log('🎉 모든 파일 로딩 완료!');
 }
 
 // ========================================
