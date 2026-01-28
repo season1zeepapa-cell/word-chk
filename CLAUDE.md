@@ -117,3 +117,6 @@ npm run build
 - 마지막 방문 시간 저장 (`lastVisit`)
 - 이전 파일 목록 저장 (`fileList`)
 - 새로운 파일에 NEW 배지 표시
+
+
+변경됨
