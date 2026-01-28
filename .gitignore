@@ -14,4 +14,4 @@ node_modules/
 .env*.local
 
 # 자동 생성 파일 (빌드 시 생성되므로 Git 추적 불필요)
-files.json
+#files.json

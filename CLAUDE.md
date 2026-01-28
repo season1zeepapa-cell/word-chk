@@ -8,84 +8,162 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### 기술 스택
 - **프론트엔드**: Vanilla JavaScript (ES6+), HTML5, Tailwind CSS (CDN)
+- **빌드**: Node.js 스크립트 (파일 목록 자동 생성)
 - **배포**: Vercel (정적 사이트 호스팅)
-- **개발 도구**: Playwright (스크린샷 자동화)
-
-## 프로젝트 구조
-
-```
-word-chk/
-├── index.html          # 메인 HTML (UI 레이아웃 및 구조)
-├── client.js           # 메인 JavaScript (파일 로딩 및 UI 로직)
-├── profile/            # 자소서 텍스트 파일들 (.txt)
-├── screenshot.js       # Playwright 스크린샷 자동화 스크립트
-├── vercel.json         # Vercel 배포 설정
-└── .agent-screenshots/ # 자동 생성된 스크린샷 저장 폴더
-```
+- **개발 도구**: Nodemon (파일 감시), Playwright (스크린샷 자동화)
 
 ## 핵심 아키텍처
 
+### 빌드 시스템 (중요!)
+
+이 프로젝트는 **빌드 타임에 files.json을 자동 생성**합니다:
+
+1. **`npm run build`** → `generate-files.js` 실행
+2. `profile/` 폴더의 모든 `.txt` 파일을 스캔
+3. 파일명을 가나다순으로 정렬하여 `files.json` 생성
+4. 클라이언트가 `files.json`을 로드하여 파일 목록 표시
+
+**중요:** Vercel 배포 시 `buildCommand: "npm run build"`가 반드시 실행되어야 합니다.
+
 ### 파일 로딩 플로우
-1. **페이지 로드** (`DOMContentLoaded`) → `loadFiles()` 호출
-2. **파일 읽기**: `client.js`의 `profileFiles` 배열에 정의된 파일명을 기반으로 `fetch()` API로 `profile/` 폴더의 `.txt` 파일 로드
-3. **데이터 저장**: `filesData` 배열에 파일명, 내용, 글자수 저장
-4. **UI 렌더링**: `renderFileList()`로 파일 카드 생성, `updateStats()`로 통계 업데이트
+
+```
+페이지 로드
+  ↓
+loadFiles() 호출
+  ↓
+files.json 로드 (빌드 시 생성된 파일 목록)
+  ↓
+각 .txt 파일을 fetch()로 로드
+  ↓
+filesData 배열에 저장 (파일명, 내용, 글자수)
+  ↓
+renderFileList() - UI 렌더링
+  ↓
+updateStats() - 통계 업데이트 (총/평균/최대/최소)
+```
 
 ### UI 컴포넌트
-- **통계 요약 카드**: 총 파일 개수 및 총 글자수 표시
-- **파일 카드**: 각 파일의 이름, 글자수, 내용 미리보기 (클릭 시 모달 표시)
-- **모달 창**: 파일 전체 내용 및 글자수 상세 표시 (ESC 키 또는 배경 클릭으로 닫기)
 
-### 중요한 제약사항
-- **정적 파일 목록**: `client.js`의 `profileFiles` 배열에 파일명이 하드코딩되어 있음 (동적 디렉토리 스캔 없음)
-- **클라이언트 사이드 렌더링**: 서버 없이 순수 클라이언트에서 `fetch()`로 텍스트 파일 로드
-- **Vercel 정적 배포**: `@vercel/static` 빌더 사용, 서버 사이드 코드 없음
+- **헤더**: 제목 + 새로고침 버튼
+- **통계 카드**: 총 파일, 총 글자수, 평균, 최대, 최소
+- **파일 카드**: 각 파일의 이름, 글자수, 내용 미리보기 (클릭 시 모달)
+- **모달**: 파일 전체 내용 표시 (ESC 키 또는 배경 클릭으로 닫기)
+- **NEW 배지**: localStorage를 사용하여 새 파일 표시
+- **토스트 메시지**: 새로고침 완료 시 알림
+
+### 주요 함수 (client.js)
+
+- `loadFiles()`: files.json 및 .txt 파일 로드
+- `renderFileList()`: 파일 카드 UI 생성
+- `updateStats()`: 전체 통계 계산 및 표시
+- `updateAdvancedStats()`: 평균/최대/최소 계산
+- `refreshFiles()`: 새로고침 버튼 동작
+- `checkFileStatus()`: NEW 배지 표시 로직 (localStorage 기반)
+- `showFileContent()`: 모달 표시
+- `showToast()`: 알림 메시지 표시
 
 ## 개발 명령어
 
-### 로컬 개발
+### 빌드
 ```bash
-# 간단한 로컬 서버 실행 (Python 3)
-python3 -m http.server 3001
+# profile 폴더 스캔 → files.json 생성
+npm run build
+```
 
-# 또는 Node.js http-server 사용
+**언제 실행?**
+- profile 폴더에 파일을 추가/삭제/이름 변경 후
+- Vercel 배포 시 자동 실행됨
+
+### 개발 서버
+```bash
+# 통합 개발 환경 시작 (권장)
+npm run dev
+```
+
+**동작:**
+1. Python 웹 서버 시작 (포트 3001)
+2. Nodemon으로 `profile/` 폴더 감시
+3. `.txt` 파일 변경 시 자동으로 `npm run build` 실행
+4. 브라우저를 수동으로 새로고침 (F5)
+
+**종료:** `Ctrl+C`
+
+**대안 (수동):**
+```bash
+# 간단한 로컬 서버만 실행
+python3 -m http.server 3001
+# 또는
 npx http-server -p 3001
 ```
 
 브라우저에서 `http://localhost:3001` 접속
 
-### 스크린샷 생성
-```bash
-# Playwright를 사용한 자동 스크린샷 (로컬 서버 실행 중이어야 함)
-node screenshot.js
-
-# 또는 macOS screencapture 사용
-./take-screenshot.sh
-```
-
 ### 배포
-```bash
-# Vercel CLI를 통한 배포
-vercel --prod
 
-# 또는 Git push로 자동 배포 (Vercel GitHub 연동 시)
+```bash
+# Git push → Vercel 자동 배포 (GitHub 연동 시)
 git push origin main
+
+# 또는 Vercel CLI 사용 (권한 문제 시 Deploy Hook 사용 권장)
+vercel --prod
 ```
 
-## 파일 추가/수정 시 주의사항
+**Vercel 빌드 설정:**
+- Build Command: `npm run build`
+- Output Directory: `.` (루트)
+- Install Command: `npm install`
 
-### profile/ 폴더에 파일 추가 시
-1. `profile/` 폴더에 `.txt` 파일 추가
-2. `client.js`의 `profileFiles` 배열에 파일명 추가 (예: `'새파일.txt'`)
-3. 배열 순서가 화면 표시 순서가 됨
+## 파일 추가/수정 워크플로우
 
-### 스타일 수정 시
-- Tailwind CSS CDN 사용 중이므로 `index.html`에서 직접 Tailwind 클래스 수정
-- 커스텀 CSS 필요 시 `<style>` 태그 추가 또는 별도 CSS 파일 생성 고려
+### profile/ 폴더에 파일 추가
+
+```bash
+# 1. 새 .txt 파일 추가
+echo "내용..." > profile/새파일.txt
+
+# 2. 빌드 실행 (files.json 업데이트)
+npm run build
+
+# 3. 브라우저 새로고침 (F5)
+```
+
+**자동 감시 사용 시 (npm run dev):**
+```bash
+# 1. 새 .txt 파일 추가
+echo "내용..." > profile/새파일.txt
+
+# 2. files.json이 자동으로 업데이트됨
+# 3. 브라우저 새로고침 (F5)
+```
+
+### UI/UX 수정
+
+- **스타일**: Tailwind CSS CDN 사용 (`index.html`에서 클래스 수정)
+- **커스텀 CSS**: `<style>` 태그에 추가 (토스트 애니메이션 참고)
+- **JavaScript 로직**: `client.js` 수정
 
 ### 글자수 계산 로직
-- 현재 `content.length` 사용 (공백, 줄바꿈 포함)
-- 다른 계산 방식 필요 시 `client.js`의 `charCount` 계산 부분 수정
+
+현재: `content.length` (공백, 줄바꿈 포함)
+
+변경하려면: `client.js`의 `loadFiles()` 함수에서 `charCount` 계산 부분 수정
+
+## 중요한 제약사항
+
+### 동적 파일 목록
+- ❌ 더 이상 `client.js`에 파일명 하드코딩 안 함
+- ✅ `files.json`을 빌드 시 자동 생성
+- ✅ 파일 추가/삭제 시 `npm run build`만 실행하면 됨
+
+### 클라이언트 사이드 렌더링
+- 순수 클라이언트에서 `fetch()`로 파일 로드
+- 서버 사이드 코드 없음
+
+### Vercel 정적 배포
+- `@vercel/static` 빌더 사용
+- `buildCommand: "npm run build"`가 필수
+- `files.json`이 gitignore에 있지만 Git에 추적됨 (과거 커밋 때문)
 
 ## 코드 스타일
 
@@ -102,3 +180,36 @@ git push origin main
 - 한국어로 작성
 - 형식: "기능/수정 내용 간략 설명"
 - 예: "자소서 글자수 체크 앱 기능 개선 및 버그 수정"
+
+## 문제 해결
+
+### 파일 목록이 표시되지 않을 때
+1. `files.json`이 생성되었는지 확인: `cat files.json`
+2. `npm run build` 실행
+3. 브라우저 강력 새로고침 (Cmd+Shift+R 또는 Ctrl+Shift+R)
+
+### Vercel 배포에 최신 코드가 반영되지 않을 때
+1. GitHub에 최신 코드가 푸시되었는지 확인
+2. Vercel 대시보드 → Deployments → Redeploy
+3. **중요:** "Use existing Build Cache" 체크 해제
+4. 빌드 로그에서 `npm run build` 실행 확인
+
+### npm run dev가 작동하지 않을 때
+- `npm install` 실행 (nodemon 설치)
+- Python 3가 설치되어 있는지 확인
+- 포트 3001이 이미 사용 중인지 확인: `lsof -ti:3001`
+
+## 프로젝트 구조
+
+```
+word-chk/
+├── index.html          # 메인 HTML (UI 레이아웃)
+├── client.js           # 메인 JavaScript (파일 로딩 및 UI 로직)
+├── generate-files.js   # 빌드 스크립트 (files.json 생성)
+├── watch.js            # 개발 서버 스크립트 (파일 감시 + 웹 서버)
+├── files.json          # 빌드 시 자동 생성 (파일 목록)
+├── profile/            # 자소서 텍스트 파일들 (.txt)
+├── package.json        # npm 설정 및 스크립트
+├── vercel.json         # Vercel 배포 설정
+└── .gitignore          # Git 무시 파일 (files.json 포함)
+```
