@@ -39,10 +39,15 @@ try {
 
     // 4단계: files.json 파일로 저장
     // JSON.stringify: JavaScript 배열을 JSON 문자열로 변환
-    //   - txtFiles: 변환할 데이터
+    //   - 변경: 배열이 아닌 객체로 변경 (타임스탬프 포함)
+    //   - files: 파일 목록 배열
+    //   - lastModified: 마지막 수정 시간 (Unix timestamp, 밀리초)
     //   - null: 특별한 설정 없음
     //   - 2: 들여쓰기 2칸 (보기 좋게 정리)
-    const jsonContent = JSON.stringify(txtFiles, null, 2);
+    const jsonContent = JSON.stringify({
+        files: txtFiles,
+        lastModified: Date.now() // 현재 시간을 밀리초로 저장
+    }, null, 2);
 
     // fs.writeFileSync: 파일에 내용 쓰기
     fs.writeFileSync('files.json', jsonContent);

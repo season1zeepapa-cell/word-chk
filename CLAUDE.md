@@ -37,7 +37,9 @@ npm run build
 
 개발 모드(`npm run dev`)에서는:
 - `profile/` 폴더의 `.txt` 파일이 변경되면 자동으로 `files.json` 재생성
-- 브라우저를 수동으로 새로고침하면 변경사항 확인 가능
+- **브라우저가 5초마다 변경사항을 체크하여 자동으로 새로고침** ✨
+- 변경 감지 시 "파일 목록이 업데이트되었습니다!" 알림 표시
+- 수동 새로고침 버튼도 여전히 사용 가능
 
 ## 아키텍처
 
@@ -59,9 +61,10 @@ npm run build
 
 ### 데이터 흐름
 
-1. **빌드 시**: `generate-files.js` → `profile/` 스캔 → `files.json` 생성
+1. **빌드 시**: `generate-files.js` → `profile/` 스캔 → `files.json` 생성 (타임스탬프 포함)
 2. **런타임**: `client.js` → `files.json` 로드 → 각 파일 fetch → 화면 렌더링
 3. **통계 계산**: 총 파일 개수, 총 글자수, 평균/최대/최소 글자수
+4. **🆕 자동 갱신**: 5초마다 `files.json` 타임스탬프 체크 → 변경 감지 시 자동 새로고침
 
 ### 주요 컴포넌트
 
@@ -74,12 +77,20 @@ npm run build
 - `showFileContent()`: 파일 클릭 시 모달로 전체 내용 표시
 - `checkFileStatus()`: localStorage를 사용하여 새로운 파일 여부 확인 (NEW 배지)
 - `refreshFiles()`: 새로고침 버튼 클릭 시 파일 목록 다시 로드
+- **🆕 `checkForUpdates()`**: files.json의 타임스탬프를 체크하여 변경 감지
+- **🆕 `startAutoRefresh()`**: 5초마다 자동으로 변경사항 체크 시작
 
 #### `generate-files.js`
 
 - Node.js의 `fs` 모듈로 `profile/` 폴더 읽기
 - `.txt` 파일만 필터링하고 알파벳순(한글 가나다순) 정렬
-- JSON 배열로 `files.json`에 저장
+- **🆕 타임스탬프를 포함한 JSON 객체로 `files.json`에 저장**
+  ```json
+  {
+    "files": ["파일1.txt", "파일2.txt"],
+    "lastModified": 1706428800000
+  }
+  ```
 
 #### `watch.js`
 

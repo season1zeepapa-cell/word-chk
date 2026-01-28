@@ -8,6 +8,14 @@ let profileFiles = [];
 // 각 파일의 내용을 저장할 배열 (나중에 파일을 읽어서 채울 예정)
 let filesData = [];
 
+// 🆕 files.json의 마지막 수정 시간을 저장
+// 설명: 이 값을 주기적으로 체크해서 파일 목록이 변경되었는지 감지합니다
+let lastModifiedTime = 0;
+
+// 🆕 자동 새로고침 폴링 간격 (밀리초)
+// 설명: 5초마다 files.json이 변경되었는지 확인합니다
+const POLLING_INTERVAL = 5000; // 5초
+
 // ========================================
 // 🚀 페이지가 로드되면 자동으로 실행되는 함수
 // ========================================
@@ -15,6 +23,10 @@ let filesData = [];
 document.addEventListener('DOMContentLoaded', function() {
     console.log('페이지 로드 완료! 파일을 불러옵니다...');
     loadFiles();
+
+    // 🆕 자동 새로고침 시작
+    // 설명: 5초마다 files.json의 변경사항을 체크합니다
+    startAutoRefresh();
 });
 
 // ========================================
@@ -34,10 +46,22 @@ async function loadFiles() {
         console.log('📂 files.json 로딩 중...');
         const filesResponse = await fetch('files.json');
 
-        // JSON 파일의 내용을 JavaScript 배열로 변환
-        profileFiles = await filesResponse.json();
+        // JSON 파일의 내용을 JavaScript 객체로 변환
+        const data = await filesResponse.json();
 
-        console.log('✅ 파일 목록 로드 완료:', profileFiles);
+        // 🆕 새로운 형식 처리 (타임스탬프 포함)
+        // 설명: files.json이 {files: [...], lastModified: 123456} 형식으로 변경됨
+        if (data.files && data.lastModified) {
+            // 새로운 형식: 파일 목록과 타임스탬프 분리
+            profileFiles = data.files;
+            lastModifiedTime = data.lastModified;
+            console.log('✅ 파일 목록 로드 완료 (타임스탬프 포함):', profileFiles);
+        } else {
+            // 하위 호환성: 기존 배열 형식도 지원
+            profileFiles = data;
+            console.log('✅ 파일 목록 로드 완료 (기존 형식):', profileFiles);
+        }
+
         console.log(`📊 총 ${profileFiles.length}개 파일 발견`);
 
     } catch (error) {
@@ -338,10 +362,17 @@ async function refreshFiles() {
 // 🍞 토스트 메시지를 표시하는 함수
 // ========================================
 // 설명: 화면 우측 상단에 3초간 메시지를 표시합니다
-function showToast(message) {
+// 파라미터:
+//   - message: 표시할 메시지 내용
+//   - type: 메시지 타입 ('success', 'info', 'error')
+function showToast(message, type = 'success') {
+    // 메시지 타입에 따라 배경색 결정
+    const bgColor = type === 'info' ? 'bg-blue-500' :
+                    type === 'error' ? 'bg-red-500' : 'bg-green-500';
+
     // 토스트 요소 생성
     const toast = document.createElement('div');
-    toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-slide-in';
+    toast.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-slide-in`;
     toast.textContent = message;
 
     // 화면에 추가
@@ -355,4 +386,55 @@ function showToast(message) {
             document.body.removeChild(toast);
         }, 300);
     }, 3000);
+}
+
+// ========================================
+// 🔄 자동 새로고침 함수
+// ========================================
+// 설명: files.json의 타임스탬프를 주기적으로 체크하여
+//       파일 목록이 변경되었는지 감지합니다
+
+/**
+ * files.json의 변경사항을 체크하는 함수
+ * 설명: 현재 저장된 타임스탬프와 비교하여 변경 여부를 판단합니다
+ */
+async function checkForUpdates() {
+    try {
+        // 캐시를 무효화하기 위해 쿼리 파라미터 추가
+        // 설명: ?t=현재시간 을 붙여서 브라우저가 캐시된 파일을 사용하지 않도록 합니다
+        const response = await fetch('files.json?t=' + Date.now());
+        const data = await response.json();
+
+        // files.json이 새로운 형식이고, 타임스탬프가 변경되었는지 확인
+        if (data.lastModified && data.lastModified > lastModifiedTime) {
+            console.log('📂 파일 목록 업데이트 감지!');
+            console.log(`   이전: ${lastModifiedTime}`);
+            console.log(`   현재: ${data.lastModified}`);
+
+            // 토스트 메시지 표시 (파란색 'info' 타입)
+            showToast('📂 파일 목록이 업데이트되었습니다!', 'info');
+
+            // 1초 후 자동으로 파일 목록 새로고침
+            // 설명: 사용자가 토스트 메시지를 보고 인지할 수 있도록 1초 대기
+            setTimeout(() => {
+                refreshFiles();
+            }, 1000);
+        }
+    } catch (error) {
+        // 오류 발생 시 조용히 무시 (네트워크 끊김 등)
+        // 설명: 폴링 중 오류가 발생해도 앱이 멈추지 않도록 합니다
+        console.debug('폴링 중 오류:', error);
+    }
+}
+
+/**
+ * 주기적으로 변경사항을 체크하는 폴링 시작 함수
+ * 설명: POLLING_INTERVAL(5초)마다 checkForUpdates() 함수를 실행합니다
+ */
+function startAutoRefresh() {
+    console.log('🔄 자동 새로고침 시작 (5초 간격)');
+    console.log('   profile 폴더의 변경사항을 자동으로 감지합니다.');
+
+    // setInterval: 일정 시간마다 함수를 반복 실행
+    setInterval(checkForUpdates, POLLING_INTERVAL);
 }
