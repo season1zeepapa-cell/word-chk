@@ -110,7 +110,17 @@ function renderFileList() {
     }
 
     // 각 파일마다 카드를 만들어서 추가합니다
-    fileListElement.innerHTML = filesData.map((file, index) => `
+    fileListElement.innerHTML = filesData.map((file, index) => {
+        // 파일 상태 확인 (NEW 배지를 표시할지 결정)
+        const status = checkFileStatus(file.name);
+
+        // 배지 HTML 생성
+        let badges = '';
+        if (status.isNew) {
+            badges += '<span class="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full ml-2">NEW</span>';
+        }
+
+        return `
         <!-- 파일 카드: 클릭하면 상세 내용을 볼 수 있습니다 -->
         <div class="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 p-6 cursor-pointer transform hover:scale-105 transition-transform"
              onclick="showFileContent(${index})">
@@ -124,8 +134,11 @@ function renderFileList() {
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
                     </div>
-                    <!-- 파일 이름 -->
-                    <h3 class="text-xl font-semibold text-gray-800">${file.name}</h3>
+                    <!-- 파일 이름과 배지를 함께 표시 -->
+                    <div class="flex items-center">
+                        <h3 class="text-xl font-semibold text-gray-800">${file.name}</h3>
+                        ${badges}
+                    </div>
                 </div>
 
                 <!-- 화살표 아이콘 (클릭 가능함을 표시) -->
@@ -148,7 +161,41 @@ function renderFileList() {
                 </p>
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
+
+    // 현재 파일 목록을 localStorage에 저장
+    // 다음에 방문했을 때 어떤 파일이 새로운 파일인지 알 수 있습니다
+    const fileNames = filesData.map(f => f.name);
+    localStorage.setItem('fileList', JSON.stringify(fileNames));
+    localStorage.setItem('lastVisit', new Date().toISOString());
+}
+
+// ========================================
+// 🆕 파일의 상태를 확인하는 함수
+// ========================================
+// 설명: localStorage를 사용하여 파일이 새로운지 확인합니다
+function checkFileStatus(fileName) {
+    // localStorage에서 마지막 방문 시간과 파일 목록 가져오기
+    const lastVisit = localStorage.getItem('lastVisit');
+    const lastFileList = JSON.parse(localStorage.getItem('fileList') || '[]');
+
+    const status = {
+        isNew: false,
+        isUpdated: false
+    };
+
+    // 처음 방문이면 배지를 표시하지 않음
+    if (!lastVisit) {
+        return status;
+    }
+
+    // 이전에 없던 파일이면 NEW 배지 표시
+    if (!lastFileList.includes(fileName)) {
+        status.isNew = true;
+    }
+
+    return status;
 }
 
 // ========================================
@@ -165,6 +212,40 @@ function updateStats() {
     // HTML 요소를 찾아서 값을 업데이트
     document.getElementById('totalFiles').textContent = totalFiles;
     document.getElementById('totalChars').textContent = totalChars.toLocaleString();
+
+    // 고급 통계 업데이트 (평균, 최대, 최소)
+    updateAdvancedStats();
+}
+
+// ========================================
+// 📊 고급 통계를 업데이트하는 함수
+// ========================================
+// 설명: 평균, 최대, 최소 글자수를 계산합니다
+function updateAdvancedStats() {
+    // 파일이 없으면 모든 값을 0으로 설정
+    if (filesData.length === 0) {
+        document.getElementById('avgChars').textContent = '0';
+        document.getElementById('maxChars').textContent = '0';
+        document.getElementById('minChars').textContent = '0';
+        return;
+    }
+
+    // 모든 파일의 글자수를 배열로 만들기
+    const charCounts = filesData.map(file => file.charCount);
+
+    // 평균 계산 (소수점 올림)
+    const average = Math.ceil(charCounts.reduce((sum, count) => sum + count, 0) / charCounts.length);
+
+    // 최대값 찾기
+    const maximum = Math.max(...charCounts);
+
+    // 최소값 찾기
+    const minimum = Math.min(...charCounts);
+
+    // 화면에 표시 (세 자리마다 쉼표 추가)
+    document.getElementById('avgChars').textContent = average.toLocaleString();
+    document.getElementById('maxChars').textContent = maximum.toLocaleString();
+    document.getElementById('minChars').textContent = minimum.toLocaleString();
 }
 
 // ========================================
@@ -220,3 +301,58 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+// ========================================
+// 🔄 파일 목록을 새로고침하는 함수
+// ========================================
+// 설명: 새로고침 버튼을 클릭하면 파일 목록을 다시 불러옵니다
+async function refreshFiles() {
+    console.log('🔄 파일 목록을 새로고침합니다...');
+
+    // 버튼 비활성화 및 로딩 애니메이션 시작
+    const refreshBtn = document.getElementById('refreshBtn');
+    const refreshIcon = document.getElementById('refreshIcon');
+
+    refreshBtn.disabled = true;
+    refreshBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    refreshIcon.classList.add('animate-spin');
+
+    // 기존 데이터 초기화
+    filesData = [];
+
+    // 파일 다시 로드
+    await loadFiles();
+
+    // 로딩 애니메이션 종료
+    refreshIcon.classList.remove('animate-spin');
+    refreshBtn.disabled = false;
+    refreshBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+
+    console.log('✅ 새로고침 완료!');
+
+    // 성공 메시지 표시 (3초 후 사라짐)
+    showToast('파일 목록이 업데이트되었습니다! 🎉');
+}
+
+// ========================================
+// 🍞 토스트 메시지를 표시하는 함수
+// ========================================
+// 설명: 화면 우측 상단에 3초간 메시지를 표시합니다
+function showToast(message) {
+    // 토스트 요소 생성
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-slide-in';
+    toast.textContent = message;
+
+    // 화면에 추가
+    document.body.appendChild(toast);
+
+    // 3초 후 제거
+    setTimeout(() => {
+        toast.classList.remove('animate-slide-in');
+        toast.classList.add('animate-slide-out');
+        setTimeout(() => {
+            document.body.removeChild(toast);
+        }, 300);
+    }, 3000);
+}

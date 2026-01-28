@@ -6,6 +6,40 @@
     <title>자소서 글자수 체크</title>
     <!-- Tailwind CSS CDN: 디자인을 쉽게 만들어주는 도구 -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 커스텀 스타일: 토스트 애니메이션 -->
+    <style>
+        /* 토스트 메시지가 나타날 때 애니메이션 */
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* 토스트 메시지가 사라질 때 애니메이션 */
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        .animate-slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .animate-slide-out {
+            animation: slideOut 0.3s ease-in;
+        }
+    </style>
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
     <!-- 전체 컨테이너: 화면 중앙에 내용을 배치하고 위아래 여백을 줍니다 -->
@@ -13,10 +47,21 @@
 
         <!-- 헤더 영역: 앱의 제목을 보여주는 부분 -->
         <header class="text-center mb-10">
-            <!-- 제목: 크고 굵은 글씨로 앱 이름을 표시 -->
-            <h1 class="text-4xl font-bold text-gray-800 mb-2">
-                📝 자소서 글자수 체크
-            </h1>
+            <!-- 제목과 새로고침 버튼을 가로로 배치 -->
+            <div class="flex justify-center items-center gap-4 mb-2">
+                <!-- 제목: 크고 굵은 글씨로 앱 이름을 표시 -->
+                <h1 class="text-4xl font-bold text-gray-800">
+                    📝 자소서 글자수 체크
+                </h1>
+                <!-- 새로고침 버튼: 파일 목록을 다시 불러옵니다 -->
+                <button
+                    id="refreshBtn"
+                    onclick="refreshFiles()"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2">
+                    <span id="refreshIcon">🔄</span>
+                    <span>새로고침</span>
+                </button>
+            </div>
             <!-- 부제목: 작은 글씨로 설명 추가 -->
             <p class="text-gray-600 text-lg">
                 profile 폴더의 파일들을 확인하세요
@@ -25,18 +70,38 @@
 
         <!-- 통계 요약 카드: 전체 파일 개수와 총 글자수를 보여줍니다 -->
         <div class="max-w-4xl mx-auto mb-8">
-            <div class="bg-white rounded-xl shadow-md p-6 flex justify-around items-center">
-                <!-- 총 파일 개수 표시 -->
-                <div class="text-center">
-                    <p class="text-gray-500 text-sm mb-1">총 파일 개수</p>
-                    <p class="text-3xl font-bold text-indigo-600" id="totalFiles">0</p>
-                </div>
-                <!-- 구분선: 두 통계 사이를 나누는 세로선 -->
-                <div class="h-12 w-px bg-gray-300"></div>
-                <!-- 총 글자수 표시 -->
-                <div class="text-center">
-                    <p class="text-gray-500 text-sm mb-1">총 글자수</p>
-                    <p class="text-3xl font-bold text-purple-600" id="totalChars">0</p>
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <!-- 그리드 레이아웃: 5개의 통계를 가로로 배치 (모바일에서는 2열) -->
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <!-- 총 파일 개수 표시 -->
+                    <div class="text-center">
+                        <p class="text-gray-500 text-sm mb-1">총 파일</p>
+                        <p class="text-2xl font-bold text-indigo-600" id="totalFiles">0</p>
+                    </div>
+
+                    <!-- 총 글자수 표시 -->
+                    <div class="text-center">
+                        <p class="text-gray-500 text-sm mb-1">총 글자수</p>
+                        <p class="text-2xl font-bold text-purple-600" id="totalChars">0</p>
+                    </div>
+
+                    <!-- 평균 글자수 표시 (NEW) -->
+                    <div class="text-center">
+                        <p class="text-gray-500 text-sm mb-1">평균</p>
+                        <p class="text-2xl font-bold text-green-600" id="avgChars">0</p>
+                    </div>
+
+                    <!-- 최대 글자수 표시 (NEW) -->
+                    <div class="text-center">
+                        <p class="text-gray-500 text-sm mb-1">최대</p>
+                        <p class="text-2xl font-bold text-orange-600" id="maxChars">0</p>
+                    </div>
+
+                    <!-- 최소 글자수 표시 (NEW) -->
+                    <div class="text-center">
+                        <p class="text-gray-500 text-sm mb-1">최소</p>
+                        <p class="text-2xl font-bold text-blue-600" id="minChars">0</p>
+                    </div>
                 </div>
             </div>
         </div>

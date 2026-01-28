@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "node generate-files.js",
-    "dev": "node generate-files.js && python3 -m http.server 3001"
+    "dev": "node watch.js"
   },
   "keywords": [],
   "author": "",
@@ -14,5 +14,8 @@
   "type": "commonjs",
   "dependencies": {
     "playwright": "^1.58.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
   }
 }
