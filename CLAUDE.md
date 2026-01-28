@@ -14,6 +14,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 핵심 아키텍처
 
+### 배포 워크플로우
+
+**Git → Vercel 자동 배포:**
+```
+개발자가 코드 변경
+  ↓
+git commit & push origin main
+  ↓
+GitHub 웹훅이 Vercel에 알림
+  ↓
+Vercel이 npm run build 실행
+  ↓
+files.json 자동 생성 (profile/*.txt 스캔)
+  ↓
+정적 사이트 배포
+  ↓
+https://word-chk.vercel.app 업데이트 완료!
+```
+
+**브랜치 전략:**
+- `main`: Production 배포 (word-chk.vercel.app)
+- PR: Preview 배포 자동 생성 (고유 URL)
+
 ### 빌드 시스템 (중요!)
 
 이 프로젝트는 **빌드 타임에 files.json을 자동 생성**합니다:
@@ -101,18 +124,25 @@ npx http-server -p 3001
 
 ### 배포
 
-```bash
-# Git push → Vercel 자동 배포 (GitHub 연동 시)
-git push origin main
+**프로덕션 URL:** https://word-chk.vercel.app
 
-# 또는 Vercel CLI 사용 (권한 문제 시 Deploy Hook 사용 권장)
-vercel --prod
+```bash
+# Git push → Vercel 자동 배포 (GitHub 연동 완료)
+git push origin main
 ```
 
-**Vercel 빌드 설정:**
-- Build Command: `npm run build`
-- Output Directory: `.` (루트)
-- Install Command: `npm install`
+**Vercel 빌드 설정 (필수):**
+- Build Command: `npm run build` ✅
+- Output Directory: `.` (루트) ✅
+- Install Command: `npm install` ✅
+- Framework Preset: `Other`
+- **Override 활성화 필수!**
+
+**⚠️ 중요: Vercel Git Integration 설정 확인**
+- Settings → Git → Connected Git Repository: `season1zeepapa-cell/word-chk`
+- Production Branch: `main`
+- Ignored Build Step: 비활성화 (빌드가 항상 실행되어야 함)
+- Deploy Hooks: PR 생성 시 Preview 배포 자동 생성
 
 ## 파일 추가/수정 워크플로우
 
@@ -189,10 +219,19 @@ echo "내용..." > profile/새파일.txt
 3. 브라우저 강력 새로고침 (Cmd+Shift+R 또는 Ctrl+Shift+R)
 
 ### Vercel 배포에 최신 코드가 반영되지 않을 때
-1. GitHub에 최신 코드가 푸시되었는지 확인
-2. Vercel 대시보드 → Deployments → Redeploy
+
+**자동 배포가 작동하지 않는 경우:**
+1. Vercel Settings → Git 에서 Git Integration 연결 확인
+2. GitHub 저장소: `season1zeepapa-cell/word-chk` 연결 확인
+3. Production Branch: `main` 설정 확인
+4. Ignored Build Step: 비활성화 확인
+
+**수동 재배포:**
+1. Vercel 대시보드 → Deployments
+2. 최신 배포 → ⋮ 메뉴 → Redeploy
 3. **중요:** "Use existing Build Cache" 체크 해제
 4. 빌드 로그에서 `npm run build` 실행 확인
+5. 빌드 시간이 0ms가 아닌지 확인 (0ms = 빌드 미실행)
 
 ### npm run dev가 작동하지 않을 때
 - `npm install` 실행 (nodemon 설치)
